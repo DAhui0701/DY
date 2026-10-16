@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>直播经营台</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2324634c'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="styles.css">
+    <script src="vendor/exceljs-4.4.0.min.js" defer></script>
+    <script src="report.js" defer></script>
+    <script src="overview.js" defer></script>
+    <script src="overview-ui.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar" aria-label="侧边栏">
+        <a class="brand" href="#overview"><span class="brand-icon" aria-hidden="true">营</span>直播经营台</a>
+        <p class="sidebar-caption">我的经营工作区</p>
+        <nav aria-label="页面导航">
+          <a href="#overview" aria-current="location">经营总览</a>
+          <a href="#import">报表导入</a>
+          <a href="#review">直播复盘</a>
+          <a href="#data">原始数据</a>
+        </nav>
+        <div class="sidebar-note"><span class="status-dot" aria-hidden="true"></span>本地报表版<p>从整理每一场直播开始</p></div>
+      </aside>
+
+      <main id="main-content">
+        <header class="page-header">
+          <div><p class="eyebrow">经营工作区 / 直播管理</p><h1>让每一场直播，都有迹可循。</h1><p class="subtitle">在这里整理报表、回看直播，逐步建立自己的经营记录。</p></div>
+          <span class="badge" id="file-badge">尚未导入报表</span>
+        </header>
+
+        <div class="notice"><strong>欢迎来到你的直播经营台</strong><p>已支持本地 Excel 报表导入与原始数据查看。经营总览与导入结果同步更新；直播复盘仍待开发。不连接平台或 AI 接口。</p></div>
+
+        <section id="overview" aria-labelledby="overview-title">
+          <div class="section-heading"><div><p class="eyebrow">01 / OVERVIEW</p><h2 id="overview-title">经营总览</h2></div><span class="section-meta">随有效导入同步更新</span></div>
+          <div id="overview-empty" class="panel empty-state"><h3>先导入一份真实报表</h3><p>导入后展示经营指标、每日趋势和明细；缺少的字段不会用模拟数据填充。</p><a href="#import" class="text-link">前往报表导入 →</a></div>
+          <div id="overview-content" hidden>
+            <div class="panel overview-meta">
+              <dl class="file-facts">
+                <dt>当前文件</dt><dd id="overview-file"></dd>
+                <dt>文件数据日期</dt><dd id="overview-file-range"></dd>
+                <dt>本地导入时间</dt><dd id="overview-imported-at"></dd>
+                <dt>平台更新时间 / 数据截至时间</dt><dd id="overview-platform-time"></dd>
+              </dl>
+              <p class="helper">支付时间口径的退款占比仅代表本次导出快照，后续退款可能改变结果。不展示未经核实的同比、环比；所有金额和比值均不代表利润。</p>
+            </div>
+            <form class="panel overview-filters" aria-label="经营总览筛选" id="overview-filter-form">
+              <label>开始日期<input id="overview-start" type="date"></label>
+              <label>结束日期<input id="overview-end" type="date"></label>
+              <label>数据范围<select id="overview-source"></select></label>
+              <label id="overview-account-wrap" hidden>选择单个账号<select id="overview-account"></select></label>
+              <label>经营类型<select id="overview-business"></select></label>
+              <label>经营载体<select id="overview-carrier"></select></label>
+              <label>推广时段<select id="overview-period"></select></label>
+              <label>消耗口径<select id="overview-spend"><option value="店铺被投">店铺被投</option><option value="店铺绑定">店铺绑定</option></select></label>
+              <label>退款口径<select id="overview-refund"><option value="支付时间">支付时间</option><option value="退款时间">退款时间</option></select></label>
+              <button id="overview-reset" type="button">恢复默认范围</button>
+            </form>
+            <p id="overview-scope" class="helper"></p>
+            <div id="overview-notices" class="warning-message" role="status" aria-live="polite" hidden></div>
+            <p id="overview-empty-selection" class="empty-state" hidden>当前筛选没有匹配记录；未将其当作零，请调整筛选。</p>
+            <div id="overview-metrics" class="metrics overview-metrics"></div>
+            <div class="panel overview-trend">
+              <h3>每日金额趋势</h3>
+              <div id="overview-legend" class="trend-legend"></div>
+              <p class="helper">单位：元。缺失日期曲线断开，真实 0 仍显示在零线；鼠标悬停或键盘聚焦数据点查看金额。手机可左右滚动图表。图形坐标为近似值，精确金额以下方每日明细为准。</p>
+              <div id="overview-chart" class="trend-scroll"></div>
+            </div>
+            <div class="panel overview-daily">
+              <h3>每日明细</h3>
+              <p class="helper">与卡片、趋势共用同一筛选。原行号可到“原始数据”中对应工作表核对；直播子集单列来源，不叠加到总成交。缺失、零值与无法计算分别标记。退款发生时间口径不计算本期退款率。</p>
+              <div class="table-scroll" role="region" aria-label="经营总览每日明细，可横向滚动" tabindex="0"><table id="daily-table"><caption id="daily-caption"></caption><thead></thead><tbody></tbody></table></div>
+              <div class="pagination"><button id="daily-previous" type="button">上一页</button><span id="daily-page-info" role="status" aria-live="polite"></span><button id="daily-next" type="button">下一页</button></div>
+            </div>
+            <div class="panel overview-hint-panel"><h3>简明经营提示</h3><p class="helper">按当前数据触发固定规则，提供待核实方向，不判定原因，不调用 AI。</p><div id="overview-hints"></div></div>
+          </div>
+        </section>
+
+        <div class="workspace-grid">
+          <section id="import" class="panel" aria-labelledby="import-title">
+            <div class="section-heading"><div><p class="eyebrow">02 / IMPORT</p><h2 id="import-title">报表导入</h2></div><span class="tag">本地读取</span></div>
+            <p class="import-intro">选择罗盘「收支分析」导出的完整 .xlsx 文件，包含“收支分析”和“账号收支详情”两个工作表。</p>
+            <p class="file-label">选择 Excel 报表（最大 10 MB）</p>
+            <button id="choose-report" class="primary-button" type="button" aria-describedby="privacy-note replace-note">选择 Excel 报表</button>
+            <input id="report-file" type="file" accept=".xlsx" aria-label="Excel 报表文件" hidden>
+            <p id="replace-note" class="helper">每次导入均替换当前数据，不追加、不累计。有数据时会先询问是否替换；校验失败保留上一份有效数据。</p>
+            <p id="import-status" class="import-status" role="status" aria-live="polite">还没有导入报表。</p>
+            <div id="import-error" class="error-message" role="alert" hidden></div>
+            <div id="file-summary" hidden></div>
+            <div id="import-warnings" class="warning-message" hidden></div>
+            <div class="panel-footnote" id="privacy-note">仅在本机浏览器读取，不上传文件或经营数据，不写入服务器、浏览器存储或项目文件。只保存在当前页面内存中，刷新、关闭页面即清除；原 Excel 不会被修改。请不要把报表提交到 GitHub。</div>
+          </section>
+
+          <section id="review" class="panel" aria-labelledby="review-title">
+            <div class="section-heading"><div><p class="eyebrow">03 / REVIEW</p><h2 id="review-title">直播复盘</h2></div><span class="tag">待开发</span></div>
+            <div class="empty-state"><span class="empty-icon" aria-hidden="true">↗</span><h3>等待第一场直播记录</h3><p>未来可在这里回顾场次表现、记录经营观察。<br>当前没有复盘记录，也不会生成分析结论。</p><a class="text-link" href="#import">查看报表导入区域 <span aria-hidden="true">→</span></a></div>
+            <div class="panel-footnote">先积累真实记录，再开展复盘。</div>
+          </section>
+        </div>
+
+        <section id="data" class="panel" aria-labelledby="data-title">
+          <div class="section-heading"><div><p class="eyebrow">04 / DATA</p><h2 id="data-title">原始数据</h2></div><span class="tag" id="data-count">暂无记录</span></div>
+          <div id="data-empty" class="empty-state data-empty"><h3>这里还没有原始数据</h3><p>导入有效报表后，可切换工作表并查看全部字段。不使用示例经营数据。</p></div>
+          <div id="data-browser" hidden>
+            <div class="data-toolbar">
+              <label for="sheet-select">工作表 <select id="sheet-select"></select></label>
+              <p id="sheet-info" class="helper"></p>
+            </div>
+            <p class="helper">按 Excel 原顺序展示，左侧为原文件行号；空白单元格显示“（空）”，“−”或“-”保留原值，不当作零。表格可左右滚动查看所有字段。</p>
+            <div class="table-scroll" role="region" aria-label="原始报表，可横向滚动" tabindex="0">
+              <table id="raw-table"><caption id="table-caption"></caption><thead></thead><tbody></tbody></table>
+            </div>
+            <div class="pagination" aria-label="表格分页">
+              <button id="previous-page" type="button">上一页</button>
+              <span id="page-info" role="status" aria-live="polite"></span>
+              <button id="next-page" type="button">下一页</button>
+            </div>
+          </div>
+        </section>
+        <footer>直播经营台 <span aria-hidden="true">·</span> 从真实记录开始 <span class="footer-note">本地报表版 / 无平台接口 · 无 AI 接口 · 无登录</span></footer>
+      </main>
+    </div>
+  </body>
+</html>
